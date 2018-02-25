@@ -1,0 +1,670 @@
+#--------------------------------------------------
+# Elasticsearch demo and course for SOC/CSIRT
+# Karl M., February 2018
+#
+# Based on https://github.com/kimjmin/elastic-demo and internal references
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 1. Create new index called proxy 
+#--------------------------------------------------
+PUT proxy
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+#--------------------------------------------------
+# 2. Bulk load API (_bulk)
+# Put some proxy log data into the index
+# Elasticsearch Reference > Document APIs > Bulk API
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+#--------------------------------------------------
+POST proxy/log/_bulk
+{"index":{"_id":1}}
+{"rt": 1512222222, "site":"cooking.yoogle.com","ip": "127.0.0.1", "user":"White, Walter","URLcategories":["home", "internet"]}
+{"index":{"_id":2}}
+{"rt": 1513333333, "site":"tasta.no","ip": "51.175.8.93", "user":"White, Walter Jr.","URLcategories":["uncategorised"]}
+{"index":{"_id":3}}
+{"rt": 1514444444, "site":"www.dagbladet.no", "ip":"87.238.33.181", "user":"Pinkman, Jessie","URLcategories":["news","internet"]}
+{"index":{"_id":4}}
+{"rt": 1515555555, "site":"www.vg.no", "ip":"195.88.55.16", "user":"Pinkman, Jessie","URLcategories":["news","internet"]}
+{"index":{"_id":5}}
+{"rt": 1516666666, "site":"www.db.no", "ip":"87.238.33.181", "user":"White, Walter","URLcategories":["news","internet"]}
+
+
+#--------------------------------------------------
+# 3. Search
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 3-1. Default search
+#--------------------------------------------------
+GET proxy/_search
+
+
+#--------------------------------------------------
+# 3-2. Search for user called Walter
+#--------------------------------------------------
+GET proxy/_search
+{
+  "query": {
+    "match": {
+      "user": "Walter"
+    }
+  }
+}
+
+#--------------------------------------------------
+# 3-2-1. Search as "one-liner" (nice from a browser or curl)
+# Elasticsearch Reference docs
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/search-uri-request.html
+#--------------------------------------------------
+GET proxy/_search?q=user:Walter
+
+#--------------------------------------------------
+# 3-3. Search for Walter White Jr
+#--------------------------------------------------
+GET proxy/_search
+{
+  "query": {
+    "match": {
+      "user": "Walter White Jr"
+    }
+  }
+}
+
+
+#--------------------------------------------------
+# 3-4. Search for "White, Walter Jr" as a phrase
+#--------------------------------------------------
+GET proxy/_search
+{
+  "query": {
+    "match_phrase": {
+      "user": "White, Walter Jr"
+    }
+  }
+}
+
+
+#--------------------------------------------------
+# 3-5. "relevance" (_score)
+# Elasticsearch: The Definitive Guide > 
+# Getting Started > Sorting and Relevance > What Is Relevance
+# https://www.elastic.co/guide/en/elasticsearch/guide/current/relevance-intro.html
+#--------------------------------------------------
+GET proxy/_search
+{
+  "query": {
+    "match": {
+      "user": "walter white"
+    }
+  }
+}
+
+
+
+#--------------------------------------------------
+# 4. Bool search
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 4-1. must: "white" and "walter jr" 
+#--------------------------------------------------
+GET /proxy/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "user": "white"
+          }
+        },
+        {
+          "match_phrase": {
+            "user": {
+              "query": "walter jr"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+
+
+#--------------------------------------------------
+# 5. highlight - search
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 5-1. highlight
+#--------------------------------------------------
+GET /proxy/_search
+{
+  "query" : {
+    "bool": {
+      "should" : [
+        {
+          "match_phrase": { 
+            "user": {
+              "query" : "white",
+              "boost": 2
+            } 
+          }
+        },
+        {
+          "match_phrase": { 
+            "user": {
+              "query" : "walter jr"
+            } 
+          }
+        }
+      ]
+    }
+  },
+  "highlight" : {
+    "fields" : {
+      "user": { }
+    }
+  }
+}
+
+
+
+#--------------------------------------------------
+# 6. filter - extract sub-set from a search
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 6-1. (bool) must + filter
+#--------------------------------------------------
+GET /proxy/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "user": "walter"
+          }
+        }
+      ],
+      "filter": {
+        "range": {
+          "rt": {
+            "gte": 1513333333,
+            "lte": 1515555555
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+#--------------------------------------------------
+# 7. Analysis (_analyze)
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 7-1 Tokenizer  (term)
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "standard",
+  "text": "Brown fox brown dog"
+}
+
+
+#--------------------------------------------------
+# 7-2 Filter
+# 7-2-1. lowercase filter
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "standard",
+  "filter": [
+    "lowercase"
+  ],
+  "text": "Brown fox brown dog"
+}
+
+
+#--------------------------------------------------
+# 7-2-2. unique filter in addition
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "standard",
+  "filter": [
+    "lowercase",
+    "unique"
+  ],
+  "text": "Brown brown brown fox brown dog"
+}
+
+
+#--------------------------------------------------
+# 7-3. (Tokenizer + Filter) => Analyzer
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "analyzer": "standard",
+  "text": "Brown fox brown dog"
+}
+
+
+#--------------------------------------------------
+# 8. Analysis
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 8-1. Combined analysis - T:standard, F:lowercase
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "standard",
+  "filter": [
+    "lowercase"
+  ],
+  "text": "THE quick.brown_FOx jumped! $19.95 @ 3.0"
+}
+
+
+#--------------------------------------------------
+# 8-2. Change tokenizer - T:letter, F:lowercase
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "letter",
+  "filter": [
+    "lowercase"
+  ],
+  "text": "THE quick.brown_FOx jumped! $19.95 @ 3.0"
+}
+
+
+#--------------------------------------------------
+# 8-3. Email and URL identification - T:standard
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "standard",
+  "text": "elastic@example.com website: https://www.elastic.co"
+}
+
+
+#--------------------------------------------------
+# 8-4. Email and URL identification with specialised tokenizer - T:uax_url_email
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "uax_url_email",
+  "text": "elastic@example.com website: https://www.elastic.co"
+}
+
+#--------------------------------------------------
+# 8-5. Tokenizer for any group of letters - T:letter
+#--------------------------------------------------
+GET proxy/_analyze
+{
+  "tokenizer": "letter",
+  "text": "elastic@example.com website: https://www.elastic.co"
+}
+
+#--------------------------------------------------
+#  Elasticsearch: The Definitive Guide > 
+# Search in Depth > Full-Text Search > Controlling Analysis
+# https://www.elastic.co/guide/en/elasticsearch/guide/master/_controlling_analysis.html
+#--------------------------------------------------
+
+
+
+#--------------------------------------------------
+# 9. Aggregation
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 9-1. terms aggregation  - URLcategories.keyword
+#--------------------------------------------------
+GET proxy/_search
+{
+  "size": 0,
+  "aggs": {
+    "popular-categories": {
+      "terms": {
+        "field": "URLcategories.keyword"
+      }
+    }
+  }
+}
+
+
+#--------------------------------------------------
+# 9-2. query aggregation
+#--------------------------------------------------
+GET proxy/_search
+{
+  "query": {
+    "match": {
+      "user": "white"
+    }
+  },
+  "aggs": {
+    "popular-categories": {
+      "terms": {
+        "field": "URLcategories.keyword"
+      }
+    }
+  }
+}
+
+
+
+#--------------------------------------------------
+# 10. Update documents
+#--------------------------------------------------
+GET proxy/log/1
+
+#--------------------------------------------------
+# 10-1. POST an overwrite on top of document 1, watch _version
+#--------------------------------------------------
+POST proxy/log/1
+{
+  "rt": 1512222222,
+  "site": "cooking.yoogle.com",
+  "ip": "127.0.0.1",
+  "user": "White, Walter",
+  "URLcategories": [
+    "home",
+   "internet"
+  ]
+}
+
+#--------------------------------------------------
+# 10-1. _update API to manipulate a document
+#--------------------------------------------------
+POST proxy/log/1/_update
+{
+  "doc": {
+    "user": "Heisenberg"
+  }
+}
+
+
+
+#--------------------------------------------------
+# 11. Mapping - Library data
+#--------------------------------------------------
+
+#--------------------------------------------------
+# 11-1. Get inferred mapping on proxy data
+#--------------------------------------------------
+GET proxy/_mapping
+
+
+#--------------------------------------------------
+# 11-2. Advanced example - with custom mapping and analysis
+# New index is called famous-librarians
+#--------------------------------------------------
+PUT famous-librarians
+{
+  "settings": {
+    "number_of_shards": 2,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "my-desc-analyzer": {
+          "type": "custom",
+          "tokenizer": "uax_url_email",
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "librarian": {
+      "properties": {
+        "name": {
+          "type": "text"
+        },
+        "favourite-colors": {
+          "type": "keyword"
+        },
+        "birth-date": {
+          "type": "date",
+          "format": "year_month_day"
+        },
+        "hometown": {
+          "type": "geo_point"
+        },
+        "description": {
+          "type": "text",
+          "analyzer": "my-desc-analyzer"
+        }
+      }
+    }
+  }
+}
+
+
+#--------------------------------------------------
+# 11-3-1. Import document 1
+#--------------------------------------------------
+PUT famous-librarians/librarian/1
+{
+  "name": "Sarah Byrd Askew",
+  "favourite-colors": [
+    "Yellow",
+    "light-grey"
+  ],
+  "birth-date": "1877-02-15",
+  "hometown": {
+    "lat": 32.349722,
+    "lon": -87.641111
+  },
+  "description": "An American public librarian who pioneered the establishment of county libraries in the United States - https://en.wikipedia.org/wiki/Sarah_Byrd_Askew"
+}
+
+
+#--------------------------------------------------
+# 11-3-2. Import document 2
+#--------------------------------------------------
+PUT famous-librarians/librarian/2
+{
+  "name": "John J. Beckley",
+  "favourite-colors": [
+    "Red",
+    "off-white"
+  ],
+  "birth-date": "1757-08-07",
+  "hometown": {
+    "lat": 51.507222,
+    "lon": -0.1275
+  },
+  "description": "An American political campaign manager and the first Librarian of the United States Congress, - https://en.wikipedia.org/wiki/John_J._Beckley"
+}
+
+
+#--------------------------------------------------
+# 11-4-1. query_string - keyword favourite colour
+# yellow - X
+# Yellow - O
+#--------------------------------------------------
+GET famous-librarians/_search
+{
+  "query": {
+    "query_string": {
+      "fields": [
+        "favourite-colors"
+      ],
+      "query": "yellow OR off-white"
+    }
+  }
+}
+
+
+#--------------------------------------------------
+# 11-4-2. range - date search
+#--------------------------------------------------
+GET famous-librarians/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match_all": {}
+        }
+      ],
+      "filter": {
+        "range": {
+          "birth-date": {
+            "gte": "now-200y",
+            "lte": "2000-01-01"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+#--------------------------------------------------
+# 11-4-3. geo_distance - within 100km of a point
+#--------------------------------------------------
+GET famous-librarians/_search
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "geo_distance": {
+          "distance": "100km",
+          "hometown": {
+            "lat": 32.41,
+            "lon": -86.92
+          }
+        }
+      }
+    }
+  }
+}
+
+
+#--------------------------------------------------
+# 11-5 IP address mapping
+#--------------------------------------------------
+
+#--------------------------------------------------
+# See the inferred data types on this index
+#--------------------------------------------------
+GET proxy/_mapping
+
+#--------------------------------------------------
+# Delete the old index
+#--------------------------------------------------
+DELETE proxy
+
+#--------------------------------------------------
+# Create index with custom mapping to account for IP addressing and date
+#--------------------------------------------------
+PUT proxy
+{
+  "settings": {
+    "number_of_shards": 2,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "log": {
+      "properties": {
+        "rt": {
+          "type": "date",
+          "format": "epoch_second"
+        },
+        "ip": {
+          "type": "ip"
+        }
+      }
+    }
+  }
+}
+
+#--------------------------------------------------
+# Insert a document (or do the bulk insert from the top of this script)
+#--------------------------------------------------
+PUT proxy/log/1
+{
+  "rt": 1519633915,
+  "site": "www.db.no",
+  "ip": "87.238.33.181",
+  "user": "White, Walter",
+  "URLcategories": [
+    "news",
+    "internet"
+  ]
+}
+
+#--------------------------------------------------
+# Search for IP within specific subnet
+#--------------------------------------------------
+GET proxy/_search
+{
+  "query": {
+    "term": {
+      "ip": "87.238.0.0/16"
+    }
+  }
+}
+
+#--------------------------------------------------
+# IP range aggregation
+#--------------------------------------------------
+GET proxy/_search
+{
+    "size": 0,
+    "aggs" : {
+        "ip_ranges" : {
+            "ip_range" : {
+                "field" : "ip",
+                "ranges" : [
+                    { "mask" : "195.88.0.0/16" },
+                    { "mask" : "87.238.0.0/16" }
+                ]
+            }
+        }
+    }
+}
+
+#--------------------------------------------------
+# Return all results after a relative day (last 70 days)
+#--------------------------------------------------
+GET proxy/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match_all": {}
+        }
+      ],
+      "filter": {
+        "range": {
+          "rt": {
+            "gte": "now-70d"
+          }
+        }
+      }
+    }
+  }
+}
+
+# End of script
