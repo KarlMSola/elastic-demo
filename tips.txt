@@ -1,0 +1,4 @@
+
+# Get server IP addresses
+az vm list-ip-addresses --ids $(az vm list -g elasticdemo.dev --query "[].id" -o tsv)
+
