@@ -15,4 +15,7 @@ sudo pip install docker-compose
 sudo systemctl start docker
 
 sudo su - centos -c "git clone -b x-pack https://github.com/deviantony/docker-elk.git"
-sudo su - centos "cd docker-elk && docker-compose up -d"
+# Kill running containers just in case this is a re-run
+sudo su - centos -c "docker stop $(docker ps -a -q); docker rm $(docker ps -a -q)"
+# Start containers in daemon mode. See log through "docker logs" command
+sudo su - centos -c "cd docker-elk && docker-compose up -d"
