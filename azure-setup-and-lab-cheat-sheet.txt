@@ -1,7 +1,7 @@
 #
 # These commands are typically run in Azure Cloud shell or in AZ Cli 2.0
 # when logged in to https://portal.azure.com as an owner of a subscription.
-n our case, subscription "IT internal"
+# In our case, subscription "IT internal"
 #
 
 
