@@ -1,0 +1,228 @@
+#
+# These commands are typically run in Azure Cloud shell or in AZ Cli 2.0
+# when logged in to https://portal.azure.com as an owner of a subscription.
+n our case, subscription "IT internal"
+#
+
+
+# ----------------------------------
+# Create Resource group and networking security to allow ssh from the coprorate network, and not the whole Internet
+# ----------------------------------
+
+RESOURCEGROUP=elasticdemo.dev
+CORPORATE_NET="143.97.0.0/16"
+
+az account set --subscription "IT internal"
+az group create -l northeurope --name $RESOURCEGROUP
+az network nsg create --resource-group $RESOURCEGROUP --location northeurope --name NSG-FrontEnd  
+az network nsg rule create --resource-group $RESOURCEGROUP --nsg-name NSG-FrontEnd \
+--name ssh-rule --access Allow --protocol Tcp --direction Inbound --priority 100 \
+--source-address-prefix $CORPORATE_NET --source-port-range "*" --destination-address-prefix "*" --destination-port-range 22
+az network vnet create --name ElasticVNET --resource-group $RESOURCEGROUP --location northeurope --address-prefix 192.168.0.0/16 --subnet-name SeverNet --subnet-prefix 192.168.1.0/24
+az network vnet subnet update --vnet-name ElasticVNET --name SeverNet --resource-group $RESOURCEGROUP --network-security-group NSG-FrontEnd
+
+
+#
+# Tip: Get list of subnets
+#
+az network vnet subnet list -g $RESOURCEGROUP --vnet-name ElasticVNET --query '[].{Name:name,CIDR:addressPrefix,Status:provisioningState}' -o table
+
+
+
+
+# ----------------------------------
+# Create all classroom servers with the same ssh-key (the one previously generated in my cloud shell in our case, Feb 26th 2018)
+# ----------------------------------
+
+RESOURCEGROUP=elasticdemo.dev
+export SSHKEY=$(cat ~/.ssh/id_rsa.pub)
+for i in user1 user2 user3 user4 user5; do
+ az role assignment create --assignee $i@statoil.com --role owner -g $RESOURCEGROUP
+ az vm create --resource-group $RESOURCEGROUP --name st-$i --image centos --admin-username centos --size Standard_D2S_V3 --ssh-key-value "$SSHKEY" --no-wait
+done
+
+# Remember to distribute the private key to all users. We all use the same one for the "centos" user in the classroom
+
+
+#
+# Tip: Get IP address of a particular server, and list of subnets
+#
+az vm list-ip-addresses --query [0].virtualMachine.network.publicIpAddresses[0].ipAddress -o tsv -n st-user1
+
+
+
+
+# ----------------------------------
+# Install all kinds of software for the demo (using the Azure agent on all servers)
+# ----------------------------------
+
+RESOURCEGROUP=elasticdemo.dev
+for i in user1 user2 user3 user4 user5; do
+  az vm extension set  --resource-group $RESOURCEGROUP --vm-name st-$i --name customScript --publisher Microsoft.Azure.Extensions \
+  --settings '{"fileUris": ["https://raw.githubusercontent.com/KarlMSola/elastic-demo/master/vm-bootstrap.sh"],"commandToExecute": "sh ./vm-bootstrap.sh"}' &
+  # Delete customScript and re-run if updates are made to vm-bootstrap.sh
+  # az vm extension delete --name customScript --resource-group $RESOURCEGROUP --vm-name st-$i
+done
+
+
+
+
+# ----------------------------------
+# Below are general tips for commands that may be needed in the interactive session
+# ----------------------------------
+ 
+
+# stop all containers:
+docker kill $(docker ps -q)
+
+# remove all containers
+docker rm $(docker ps -a -q)
+
+# Prune system
+docker system prune -a
+
+# Watch all docker container logs
+cd ~/docker-elk; docker-compose logs -f
+
+# Stop containers, delete them, start docker-compose over again
+docker kill $(docker ps -q); docker rm $(docker ps -a -q)
+cd ~/docker-elk; docker-compose up
+
+# Set the logstash_system user password (possible bug in the x-code branch as it stands?!?)
+curl -XPUT 'elastic:changeme@localhost:9200/_xpack/security/user/logstash_system/_password?pretty' \
+ -H 'Content-Type: application/json' -d'{ "password": "changeme"}'
+
+
+
+
+
+# ----------------------------------
+# Below are commands needed to index data from open datasets. We use these to practise Logstash and Kibana techniques
+# ----------------------------------
+
+
+
+# ----------------------------------
+# Index a movies database (scraped from Wikipedia)
+# ----------------------------------
+
+
+# Install netcat, as I forgot it in the initial setup
+sudo yum install nc -y
+
+# Set the logstash_system user password
+curl -XPUT 'elastic:changeme@localhost:9200/_xpack/security/user/logstash_system/_password?pretty' \
+ -H 'Content-Type: application/json' -d'{ "password": "changeme"}'
+
+# Set up the json filtering in logstash.conf
+
+cat > ~/docker-elk/logstash/pipeline/logstash.conf << EOF
+input {
+        tcp {
+                port => 5000
+        }
+}
+
+
+filter {
+  json {
+    source => "message"
+  }
+}
+
+output {
+        elasticsearch {
+                hosts => "elasticsearch:9200"
+                user => elastic
+                password => changeme
+        }
+}
+EOF
+
+# Restart logstash container
+docker restart dockerelk_logstash_1
+
+# Import JSON data through netcat into port 5000, where Logstash is listening for input
+curl https://raw.githubusercontent.com/prust/wikipedia-movie-data/master/movies.json | jq .[] -c | nc localhost 5000
+
+# Go to localhost:5601 and create an index pattern for "logstash-*". Play around...
+
+
+
+
+
+# ----------------------------------
+# Install logstash from download page and import "Varsel om Feil"
+# ---------------------------------- 
+
+# Download and install logstash from elastic.co
+cd ~
+wget https://artifacts.elastic.co/downloads/logstash/logstash-6.2.2.tar.gz
+tar zxf logstash-6.2.2.tar.gz
+cd logstash-6.2.2/
+
+# Fetch the data an store locally
+wget https://opencom.no/dataset/6370c400-1fd2-45b0-a018-1362b7303088/resource/0a8d83a9-e0d2-4eae-a014-9562a49187b0/download/copenitvofcsv.csv
+
+# Create the new logstash-vof.conf configuration file
+cat > logstash-vof.conf <<EOF
+# vim: syntax=python
+input {
+  # Using open dataset from Stavanger Kommune, Varsel om Feil
+  # https://opencom.no/dataset/6370c400-1fd2-45b0-a018-1362b7303088/resource/0a8d83a9-e0d2-4eae-a014-9562a49187b0/download/copenitvofcsv.csv
+  stdin {}
+}
+
+## Add your filters / logstash plugins configuration here
+filter {
+  csv {
+    skip_header => true
+    autodetect_column_names => true
+    autogenerate_column_names => true
+    #columns => [ "VEI","HUSNR","TEMA","PROBLEM","LATITUDE","LONGITUDE","STATUS","DATO" ]
+    separator => ","
+    quote_char => "'"
+    convert => {
+     "HUSNR" => "integer"
+    }
+  }
+
+  date {
+    match => [ "DATO", "yyyy-MM-dd HH:mm:ss" ]
+  }
+
+  mutate {
+    add_field => [ "[geoip][location]", "%{LONGITUDE}" ]
+    add_field => [ "[geoip][location]", "%{LATITUDE}" ]
+  }
+
+  mutate {
+    convert => [ "[geoip][location]", "float" ]
+    remove_field => [ "DATO", "LONGITUDE", "LATITUDE" ]
+  }
+}
+
+output {
+  stdout { codec => rubydebug }
+  elasticsearch {
+    hosts => "0.0.0.0:9200"
+    index => "logstash-vof"
+    user => elastic
+    password => changeme
+  }
+}
+EOF
+
+
+# You should now have a logstash-vof.conf in your local directory
+# Test if config has correct syntax
+bin/logstash -f logstash-vof.conf -t
+
+
+# Import data into elasticsearch by piping it into logstash directly
+cat copenitvofcsv.csv | bin/logstash -f logstash-vof.conf
+
+
+# Go to localhost:5601 and create an index pattern for "logstash-vof". Play around...
+
+
