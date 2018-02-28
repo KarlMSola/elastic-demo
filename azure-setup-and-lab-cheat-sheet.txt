@@ -9,8 +9,8 @@ n our case, subscription "IT internal"
 # Create Resource group and networking security to allow ssh from the coprorate network, and not the whole Internet
 # ----------------------------------
 
-RESOURCEGROUP=elasticdemo.dev
-CORPORATE_NET="143.97.0.0/16"
+RESOURCEGROUP="elasticdemo.dev"  # Name of resource group, you will probably delete this one after the course
+CORPORATE_NET="172.16.16.0/23"   # Your public NAT address or corporate public IP subnet (tip: curl ipconfig.io)
 
 az account set --subscription "IT internal"
 az group create -l northeurope --name $RESOURCEGROUP
