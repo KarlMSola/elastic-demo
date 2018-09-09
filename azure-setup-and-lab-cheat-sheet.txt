@@ -161,10 +161,13 @@ wget https://artifacts.elastic.co/downloads/logstash/logstash-6.2.2.tar.gz
 tar zxf logstash-6.2.2.tar.gz
 cd logstash-6.2.2/
 
-# Fetch the data an store locally
+# Fetch the data and store locally
 wget https://opencom.no/dataset/6370c400-1fd2-45b0-a018-1362b7303088/resource/0a8d83a9-e0d2-4eae-a014-9562a49187b0/download/copenitvofcsv.csv
 
 # Create the new logstash-vof.conf configuration file
+# Cut/paste all the way down to and including line 217. This will produce a file called logstash-vof.conf
+#
+
 cat > logstash-vof.conf <<EOF
 # vim: syntax=python
 input {
@@ -173,7 +176,7 @@ input {
   stdin {}
 }
 
-## Add your filters / logstash plugins configuration here
+## Add your filters / logstash plugins configuration here 
 filter {
   csv {
     skip_header => true
@@ -216,10 +219,14 @@ EOF
 
 # You should now have a logstash-vof.conf in your local directory
 # Test if config has correct syntax
+#
+
 bin/logstash -f logstash-vof.conf -t
 
 
 # Import data into elasticsearch by piping it into logstash directly
+#
+
 cat copenitvofcsv.csv | bin/logstash -f logstash-vof.conf
 
 
