@@ -1,6 +1,6 @@
 # Install new Elastic stack for quick testing
 
-*Requirements:
+Requirements:
 Relatively recent Java JDK, operating system is either Linux or OSX
 
 Create "landing zone" and give yourself ownership of the directory
@@ -22,7 +22,7 @@ tar zxf logstash-6.6.0.tar.gz
 
 Set up your own Elasticsearch server config on a non default port, 9201 in this case:
 ```bash
-/export/elk66/elasticsearch-6.6.0/config/
+cd /export/elk66/elasticsearch-6.6.0/config/
 cat > elasticsearch.yml <<EOF
 cluster.name: "elk66"
 network.host: 0.0.0.0
