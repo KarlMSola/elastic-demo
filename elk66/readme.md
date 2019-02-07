@@ -34,7 +34,7 @@ path.logs: /export/elk66/elasticsearch/logs
 EOF
 ```
 
-Start the single node cluster (press <ctrl>-<c> to exit)
+Start the single node cluster (press Ctrl-c to exit)
 ```bash
 cd /export/elk66/elasticsearch-6.6.0
 bin/elasticsearch
