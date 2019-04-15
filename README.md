@@ -1,6 +1,8 @@
 # elastic-demo
 # Internal Elasticsearch demo and workshop, February 2018
 
+[![Build Status](https://dev.azure.com/kms0165/kms/_apis/build/status/KarlMSola.elastic-demo?branchName=master)](https://dev.azure.com/kms0165/kms/_build/latest?definitionId=1&branchName=master)
+
 We borrowed a classroom and filled it with IT Security professionals wanting to learn 
 something new and cool about security analytics, dashboarding and visualisation
 
