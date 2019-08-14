@@ -12,9 +12,9 @@ sudo chown karl /export/elk73/
 Fetch the files from elastic.co and unpack them in the directory just created
 ```bash
 cd /export/elk7x/
-wget --no-check-certificate https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.3.0-linux-x86_64.tar.gz
-wget --no-check-certificate https://artifacts.elastic.co/downloads/kibana/kibana-7.3.0-linux-x86_64.tar.gz
-wget --no-check-certificate https://artifacts.elastic.co/downloads/logstash/logstash-7.3.0.tar.gz
+wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.3.0-linux-x86_64.tar.gz
+wget https://artifacts.elastic.co/downloads/kibana/kibana-7.3.0-linux-x86_64.tar.gz
+wget https://artifacts.elastic.co/downloads/logstash/logstash-7.3.0.tar.gz
 tar zxf elasticsearch-7.3.0-linux-x86_64.tar.gz
 tar zxf kibana-7.3.0-linux-x86_64.tar.gz
 tar zxf logstash-7.3.0.tar.gz
@@ -47,7 +47,7 @@ bin/kibana -p 5601 -e http://localhost:9201
 ```
 
 
-Do whatever testing is needed. Kibana should be available on http://localhost:5601
+Do whatever else experimenting and testing you need. Kibana should be available on http://localhost:5601
 
 Delete the whole lot when done testing
 ```bash
