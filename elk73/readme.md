@@ -11,7 +11,7 @@ sudo chown karl /export/elk73/
 
 Fetch the files from elastic.co and unpack them in the directory just created
 ```bash
-cd /export/elk7x/
+cd /export/elk73/
 wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.3.0-linux-x86_64.tar.gz
 wget https://artifacts.elastic.co/downloads/kibana/kibana-7.3.0-linux-x86_64.tar.gz
 wget https://artifacts.elastic.co/downloads/logstash/logstash-7.3.0.tar.gz
@@ -20,7 +20,7 @@ tar zxf kibana-7.3.0-linux-x86_64.tar.gz
 tar zxf logstash-7.3.0.tar.gz
 ```
 
-Set up your own Elasticsearch server config on a non default port, 9201 in this case:
+Set up your own Elasticsearch server config on a non default ports, 9201/9301 in this case:
 ```bash
 cd /export/elk73/elasticsearch-7.3.0/config/
 cat > elasticsearch.yml <<EOF
@@ -29,6 +29,7 @@ network.host: 0.0.0.0
 discovery.zen.minimum_master_nodes: 1
 discovery.type: single-node
 http.port: 9201
+transport.port: 9301
 path.data: /export/elk73/elasticsearch/data
 path.logs: /export/elk73/elasticsearch/logs
 EOF
