@@ -1,7 +1,7 @@
 # Install new Elastic stack for quick testing
 
 Requirements:
-Operating system is OSX (Linux is very similar.) Elasticsearch is now bundled with a suitable Java version.
+Operating system is OSX (Linux is very similar.) Elasticsearch is now bundled with a suitable Java version (openjdk version "13.0.1" 2019-10-15 in this instance).
 
 Create "landing zone", a directory into which we will download and extract the required files from Elastic 
 ```bash
