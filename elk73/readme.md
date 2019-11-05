@@ -43,7 +43,7 @@ bin/elasticsearch
 
 In a separate terminal, start Kibana, pointing to the elasticsearch instance just started
 ```bash
-cd /export/elk73/
+cd /export/elk73/kibana-7.3.0-linux-x86_64
 bin/kibana -p 5601 -e http://localhost:9201
 ```
 
