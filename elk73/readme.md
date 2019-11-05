@@ -1,7 +1,7 @@
 # Install new Elastic stack for quick testing
 
 Requirements:
-Relatively recent Java JDK, operating system is either Linux or OSX
+Relatively recent Java JDK, operating system is Linux (or OSX with minor modifications)
 
 Create "landing zone" and give yourself ownership of the directory (assuming karl is the username)
 ```bash
