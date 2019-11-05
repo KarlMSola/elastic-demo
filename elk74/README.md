@@ -1,9 +1,9 @@
 # Install new Elastic stack for quick testing
 
 Requirements:
-Relatively recent Java JDK, operating system is OSX (or Linux with minor modifications)
+Operating system is OSX (Linux is very similar.) Elasticsearch is now bundled with a suitable Java version.
 
-Create "landing zone" and give yourself ownership of the directory (assuming karl is the username)
+Create "landing zone", a directory into which we will download and extract the required files from Elastic 
 ```bash
 mkdir -p ~/elk74/
 ```
@@ -29,8 +29,8 @@ discovery.zen.minimum_master_nodes: 1
 discovery.type: single-node
 http.port: 9201
 transport.port: 9301
-path.data: ~/elk74/elasticsearch/data
-path.logs: ~/elk74/elasticsearch/logs
+path.data: data
+path.logs: logs
 EOF
 ```
 
